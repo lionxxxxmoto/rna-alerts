@@ -33,7 +33,7 @@ FEEDS = {
 # Your ntfy.sh topic (pick a unique, hard-to-guess name -- anyone who
 # knows it can see your notifications, since ntfy topics are public
 # unless self-hosted). Can also be set via the NTFY_TOPIC env variable.
-NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "your-unique-topic-name-here")
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "RNA-Journal-Alerts-lionxxxxmotos11")
 
 # File used to remember which articles we've already alerted on, so we
 # don't send duplicate notifications every run.
