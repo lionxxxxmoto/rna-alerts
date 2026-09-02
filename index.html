@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>RNA Watch</title>
+<title>RNA Tracker</title>
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="RNA Watch">
+<meta name="apple-mobile-web-app-title" content="RNA Tracker">
 <link rel="apple-touch-icon" href="icon.png">
 <style>
   :root {
@@ -44,16 +44,42 @@
     margin: 0;
   }
 
-  .filters {
+  /* Family tabs -- segmented control */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin: 16px 20px 0;
+    background: var(--accent-tint);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 4px;
+    border-radius: 7px;
+    color: var(--accent);
+    background: transparent;
+    border: none;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: var(--paper);
+  }
+
+  /* Sub-journal pills */
+  .subfilters {
     display: flex;
     gap: 8px;
     overflow-x: auto;
     padding: 14px 20px;
-    border-bottom: 1px solid var(--rule);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
-  .filters::-webkit-scrollbar { display: none; }
+  .subfilters:empty { padding: 0; }
+  .subfilters::-webkit-scrollbar { display: none; }
   .pill {
     flex: 0 0 auto;
     font-size: 13px;
@@ -70,6 +96,36 @@
     color: var(--accent);
     font-weight: 600;
   }
+
+  /* Date filter */
+  .datefilter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px 14px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .datefilter input[type="date"] {
+    font-size: 13px;
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    padding: 6px 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .datefilter .clear {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    background: none;
+    border: none;
+    padding: 4px 2px;
+    margin-left: auto;
+  }
+  .datefilter .clear[hidden] { display: none; }
 
   main { padding: 4px 20px 60px; }
 
@@ -119,11 +175,18 @@
 <body>
 
 <header>
-  <h1>RNA Watch</h1>
+  <h1>RNA Tracker</h1>
   <p class="subtitle" id="subtitle">Loading...</p>
 </header>
 
-<div class="filters" id="filters"></div>
+<div class="tabs" id="tabs"></div>
+<div class="subfilters" id="subfilters"></div>
+
+<div class="datefilter">
+  <label>From <input type="date" id="dateFrom"></label>
+  <label>To <input type="date" id="dateTo"></label>
+  <button class="clear" id="clearDates" hidden>Clear</button>
+</div>
 
 <main id="main">
   <div class="empty"><div class="empty-title">Loading articles...</div></div>
@@ -132,7 +195,39 @@
 <script>
 const DATA_URL = "matches_log.json";
 let allMatches = [];
-let activeFilter = "All";
+let activeFamily = "All";
+let activeJournal = "All";
+let dateFrom = "";
+let dateTo = "";
+
+// Journal family membership -- must match the journal names used in
+// check_journals.py's FEEDS dict.
+const FAMILIES = {
+  Nature: [
+    "Nature", "Nature Genetics", "Nature Medicine", "Nature Immunology",
+    "Nature Methods", "Nature Biotechnology", "Nature Cell Biology",
+    "Nature Neuroscience", "Nature Structural & Molecular Biology",
+    "Nature Chemical Biology", "Nature Chemistry", "Nature Communications",
+    "Nature Reviews Genetics", "Nature Reviews Molecular Cell Biology",
+  ],
+  Science: [
+    "Science", "Science Advances", "Science Immunology",
+    "Science Signaling", "Science Translational Medicine",
+  ],
+  Cell: [
+    "Cell", "Molecular Cell", "Cell Reports", "Cell Metabolism",
+    "Cell Stem Cell", "Cancer Cell", "Immunity", "Neuron",
+    "Developmental Cell", "Cell Systems", "Structure",
+    "Cell Chemical Biology", "Molecular Therapy Nucleic Acids",
+  ],
+};
+
+function familyOf(journal) {
+  for (const [fam, list] of Object.entries(FAMILIES)) {
+    if (list.includes(journal)) return fam;
+  }
+  return "Other";
+}
 
 function formatDayLabel(dateStr) {
   const d = new Date(dateStr);
@@ -144,19 +239,71 @@ function formatDayLabel(dateStr) {
   return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
+
+function getFiltered() {
+  return allMatches.filter(m => {
+    if (activeFamily !== "All" && familyOf(m.journal) !== activeFamily) return false;
+    if (activeJournal !== "All" && m.journal !== activeJournal) return false;
+    if (dateFrom && m.date.slice(0, 10) < dateFrom) return false;
+    if (dateTo && m.date.slice(0, 10) > dateTo) return false;
+    return true;
+  });
+}
+
+function renderTabs() {
+  const tabs = ["All", "Science", "Nature", "Cell"];
+  const el = document.getElementById("tabs");
+  el.innerHTML = tabs.map(t =>
+    `<button class="tab${t === activeFamily ? " active" : ""}" data-family="${t}">${t}</button>`
+  ).join("");
+  el.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeFamily = btn.dataset.family;
+      activeJournal = "All";
+      renderTabs();
+      renderSubfilters();
+      render();
+    });
+  });
+}
+
+function renderSubfilters() {
+  const el = document.getElementById("subfilters");
+  if (activeFamily === "All") {
+    el.innerHTML = "";
+    return;
+  }
+  const present = new Set(
+    allMatches.filter(m => familyOf(m.journal) === activeFamily).map(m => m.journal)
+  );
+  const journals = ["All", ...FAMILIES[activeFamily].filter(j => present.has(j))];
+  el.innerHTML = journals.map(j =>
+    `<button class="pill${j === activeJournal ? " active" : ""}" data-journal="${escapeHtml(j)}">${escapeHtml(j === "All" ? "All " + activeFamily : j)}</button>`
+  ).join("");
+  el.querySelectorAll(".pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeJournal = btn.dataset.journal;
+      renderSubfilters();
+      render();
+    });
+  });
+}
+
 function render() {
   const main = document.getElementById("main");
-  const filtered = activeFilter === "All"
-    ? allMatches
-    : allMatches.filter(m => m.journal === activeFilter);
+  const filtered = getFiltered();
 
   document.getElementById("subtitle").textContent =
-    filtered.length + (filtered.length === 1 ? " article" : " articles")
-    + (activeFilter === "All" ? "" : " in " + activeFilter);
+    filtered.length + (filtered.length === 1 ? " article" : " articles");
 
   if (filtered.length === 0) {
-    main.innerHTML = '<div class="empty"><div class="empty-title">No articles yet</div>' +
-      '<div class="empty-body">Matches will appear here after the next check.</div></div>';
+    main.innerHTML = '<div class="empty"><div class="empty-title">No articles</div>' +
+      '<div class="empty-body">Nothing matches this filter yet.</div></div>';
     return;
   }
 
@@ -179,32 +326,30 @@ function render() {
   }).join("");
 }
 
-function escapeHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = s || "";
-  return d.innerHTML;
-}
-
-function renderFilters() {
-  const journals = ["All", ...new Set(allMatches.map(m => m.journal))];
-  const el = document.getElementById("filters");
-  el.innerHTML = journals.map(j =>
-    `<button class="pill${j === activeFilter ? " active" : ""}" data-journal="${escapeHtml(j)}">${escapeHtml(j)}</button>`
-  ).join("");
-  el.querySelectorAll(".pill").forEach(btn => {
-    btn.addEventListener("click", () => {
-      activeFilter = btn.dataset.journal;
-      renderFilters();
-      render();
-    });
-  });
-}
+document.getElementById("dateFrom").addEventListener("change", (e) => {
+  dateFrom = e.target.value;
+  document.getElementById("clearDates").hidden = !(dateFrom || dateTo);
+  render();
+});
+document.getElementById("dateTo").addEventListener("change", (e) => {
+  dateTo = e.target.value;
+  document.getElementById("clearDates").hidden = !(dateFrom || dateTo);
+  render();
+});
+document.getElementById("clearDates").addEventListener("click", () => {
+  dateFrom = ""; dateTo = "";
+  document.getElementById("dateFrom").value = "";
+  document.getElementById("dateTo").value = "";
+  document.getElementById("clearDates").hidden = true;
+  render();
+});
 
 fetch(DATA_URL, { cache: "no-store" })
   .then(r => r.json())
   .then(data => {
     allMatches = data;
-    renderFilters();
+    renderTabs();
+    renderSubfilters();
     render();
   })
   .catch(() => {

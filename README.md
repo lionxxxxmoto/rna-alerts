@@ -27,9 +27,10 @@ Free, at github.com.
   **Public** (needed so the companion web app below can read your
   match history), and create it.
 - Upload all the files from this project -- `check_journals.py`,
-  `README.md`, `matches_log.json`, `index.html`, `manifest.json`, and
-  the `.github/` folder -- by dragging them into the GitHub web
-  uploader, or using git if you're comfortable with it.
+  `README.md`, `matches_log.json`, `index.html`, `manifest.json`,
+  `icon.png`, `icon_512.png`, and the `.github/` folder -- by
+  dragging them into the GitHub web uploader, or using git if you're
+  comfortable with it.
 
 ### 4. Add your ntfy topic as a secret
 - In your repo, go to **Settings > Secrets and variables > Actions**.
@@ -48,7 +49,7 @@ Free, at github.com.
 
 That's it. From now on it runs automatically once a day at 8am Eastern.
 
-### 6. Turn on GitHub Pages (for the RNA Watch web app)
+### 6. Turn on GitHub Pages (for the RNA Tracker web app)
 - In your repo, go to **Settings > Pages**.
 - Under "Build and deployment", set **Source** to "Deploy from a
   branch", set **Branch** to `main` and folder to `/ (root)`, then
@@ -56,11 +57,12 @@ That's it. From now on it runs automatically once a day at 8am Eastern.
 - After a minute or two, your app will be live at
   `https://<your-github-username>.github.io/rna-alert/`.
 - Open that link on your iPhone in Safari, tap the **Share** icon,
-  then **Add to Home Screen**. You'll get a "RNA Watch" app icon that
-  opens full-screen, no browser bar.
-- Every day after the script runs, open the app and pull to refresh
-  (or just relaunch it) to see the latest matches, filterable by
-  journal.
+  then **Add to Home Screen**. You'll get an "RNA Tracker" icon
+  (teal, double-helix mark) that opens full-screen, no browser bar.
+- Every day after the script runs, open the app and relaunch it to
+  see the latest matches. Filter by journal family (All/Science/
+  Nature/Cell) with the tabs at top, narrow to a specific sub-journal
+  with the pills below that, and filter by date range at the bottom.
 
 ## Customizing
 
@@ -85,9 +87,10 @@ That's it. From now on it runs automatically once a day at 8am Eastern.
 4. It saves `seen_articles.json` (so it never alerts you twice for the
    same article) and `matches_log.json` (the last 500 matches, newest
    first) back to your repo.
-5. The RNA Watch web app (`index.html`) reads `matches_log.json`
+5. The RNA Tracker web app (`index.html`) reads `matches_log.json`
    straight from your public repo and displays it as a filterable
-   list -- no separate backend needed.
+   list -- by journal family, sub-journal, and date range -- no
+   separate backend needed.
 
 Note: GitHub Actions schedules can occasionally run a few minutes
 late during high-traffic periods -- this is normal and not a bug.

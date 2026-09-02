@@ -1,9 +1,12 @@
 {
-  "name": "RNA Watch",
-  "short_name": "RNA Watch",
+  "name": "RNA Tracker",
+  "short_name": "RNA Tracker",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#FAF9F5",
   "theme_color": "#FAF9F5",
-  "icons": []
+  "icons": [
+    { "src": "icon_512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
 }
