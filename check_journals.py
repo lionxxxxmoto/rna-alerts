@@ -159,7 +159,7 @@ def send_heartbeat():
         data="No new articles matched today.".encode("utf-8"),
         headers={
             "Title": "Journal check complete",
-            "Priority": "min",  # low priority: silent/no-buzz on most phones
+            "Priority": "default",  # matches real alerts so it also shows on lock screen
             "Tags": "white_check_mark",
         },
         timeout=15,
