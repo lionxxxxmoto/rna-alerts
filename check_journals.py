@@ -21,7 +21,7 @@ import requests
 
 # Keywords to watch for (case-insensitive). An article matches if ANY
 # of these appear in its title or summary.
-KEYWORDS = ["RNA, mRNA"]
+KEYWORDS = ["RNA"]
 
 # RSS feeds to check. Add/remove journals here.
 FEEDS = {
@@ -33,11 +33,16 @@ FEEDS = {
 # Your ntfy.sh topic (pick a unique, hard-to-guess name -- anyone who
 # knows it can see your notifications, since ntfy topics are public
 # unless self-hosted). Can also be set via the NTFY_TOPIC env variable.
-NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "RNA-Journal-Alerts-lionxxxxmotos11")
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "your-unique-topic-name-here")
 
 # File used to remember which articles we've already alerted on, so we
 # don't send duplicate notifications every run.
 SEEN_FILE = "seen_articles.json"
+
+# If True, sends a low-priority "checked, nothing new" notification on
+# days with no matches -- useful as a heartbeat to confirm it's still
+# running. Set to False to go back to only hearing about real matches.
+NOTIFY_ON_NO_MATCHES = True
 
 # --- LOGIC --------------------------------------------------------------
 
@@ -74,6 +79,19 @@ def send_notification(journal, entry):
     )
 
 
+def send_heartbeat():
+    requests.post(
+        f"https://ntfy.sh/{NTFY_TOPIC}",
+        data="No new articles matched today.".encode("utf-8"),
+        headers={
+            "Title": "Journal check complete",
+            "Priority": "min",  # low priority: silent/no-buzz on most phones
+            "Tags": "white_check_mark",
+        },
+        timeout=15,
+    )
+
+
 def main():
     seen = load_seen()
     new_seen = set(seen)
@@ -94,6 +112,8 @@ def main():
     save_seen(new_seen)
     if not found_any:
         print("No new matching articles this run.")
+        if NOTIFY_ON_NO_MATCHES:
+            send_heartbeat()
 
 
 if __name__ == "__main__":
