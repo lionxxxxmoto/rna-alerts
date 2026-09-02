@@ -1,8 +1,10 @@
 # RNA Journal Alert
 
-Checks Nature, Science, and Cell every hour for new articles mentioning
-your keyword ("RNA" by default) and sends a push notification straight
-to your phone. Runs for free using GitHub Actions -- no server, no
+Checks Nature, Science, and Cell once a day at 8am for new articles
+mentioning your keyword ("RNA" by default) and sends a push
+notification straight to your phone -- but only when there's an
+actual match. No matches, no notification; you won't hear from it
+on a quiet day. Runs for free using GitHub Actions -- no server, no
 computer that needs to stay on.
 
 ## Setup (about 15 minutes)
@@ -54,10 +56,14 @@ That's it. From now on it runs automatically every hour.
 
 ## How it works
 
-1. GitHub Actions wakes up on the schedule you set and runs
+1. GitHub Actions wakes up once a day at 8am Eastern and runs
    `check_journals.py` in a temporary cloud machine.
 2. The script downloads each journal's RSS feed and checks new
    entries' titles/summaries for your keyword.
-3. For each match, it sends a notification to your ntfy.sh topic.
+3. **Only if there's a match**, it sends a notification to your
+   ntfy.sh topic. No matches that day means no notification at all.
 4. It saves a small `seen_articles.json` file back to your repo so it
    never alerts you twice for the same article.
+
+Note: GitHub Actions schedules can occasionally run a few minutes
+late during high-traffic periods -- this is normal and not a bug.

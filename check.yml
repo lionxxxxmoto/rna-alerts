@@ -2,8 +2,12 @@ name: Journal Keyword Alert
 
 on:
   schedule:
-    # Runs every hour, at minute 0 (UTC)
-    - cron: "0 * * * *"
+    # Runs once a day at 13:00 UTC = 8:00 AM Eastern Daylight Time.
+    # GitHub Actions cron always uses UTC, not local time. During
+    # Eastern Standard Time (winter), 8am ET is 12:00 UTC instead --
+    # change "0 13" to "0 12" below if you want it to stay at 8am
+    # local through the clock change.
+    - cron: "0 13 * * *"
   workflow_dispatch: {}  # lets you trigger it manually from the Actions tab
 
 jobs:
