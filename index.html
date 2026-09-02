@@ -142,6 +142,33 @@
 
   main { padding: 4px 0 60px; }
 
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+  }
+  .pager-btn {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    background: none;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 8px 16px;
+  }
+  .pager-btn:disabled {
+    color: var(--ink-soft);
+    opacity: 0.4;
+  }
+  .pager-status {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
   .day-group { margin-top: 22px; }
   .day-label {
     font-size: 11px;
@@ -216,6 +243,8 @@ let activeFamily = "All";
 let activeJournal = "All";
 let dateFrom = "";
 let dateTo = "";
+let currentPage = 1;
+const PAGE_SIZE = 15;
 
 // Journal family membership -- must match the journal names used in
 // check_journals.py's FEEDS dict.
@@ -281,6 +310,7 @@ function renderTabs() {
     btn.addEventListener("click", () => {
       activeFamily = btn.dataset.family;
       activeJournal = "All";
+      currentPage = 1;
       renderTabs();
       renderSubfilters();
       render();
@@ -304,6 +334,7 @@ function renderSubfilters() {
   el.querySelectorAll(".pill").forEach(btn => {
     btn.addEventListener("click", () => {
       activeJournal = btn.dataset.journal;
+      currentPage = 1;
       renderSubfilters();
       render();
     });
@@ -323,15 +354,22 @@ function render() {
     return;
   }
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
   const groups = {};
   const order = [];
-  filtered.forEach(m => {
+  pageItems.forEach(m => {
     const label = formatDayLabel(m.date);
     if (!groups[label]) { groups[label] = []; order.push(label); }
     groups[label].push(m);
   });
 
-  main.innerHTML = order.map(label => {
+  const listHtml = order.map(label => {
     const items = groups[label].map(m => `
       <a class="entry" href="${m.link}" target="_blank" rel="noopener">
         <div class="entry-journal">${escapeHtml(m.journal)}</div>
@@ -340,20 +378,46 @@ function render() {
     `).join("");
     return `<div class="day-group"><div class="day-label">${label}</div>${items}</div>`;
   }).join("");
+
+  const pagerHtml = totalPages > 1 ? `
+    <div class="pager">
+      <button class="pager-btn" id="pagerPrev" ${currentPage === 1 ? "disabled" : ""}>Previous</button>
+      <span class="pager-status">Page ${currentPage} of ${totalPages}</span>
+      <button class="pager-btn" id="pagerNext" ${currentPage === totalPages ? "disabled" : ""}>Next</button>
+    </div>
+  ` : "";
+
+  main.innerHTML = listHtml + pagerHtml;
+
+  if (totalPages > 1) {
+    document.getElementById("pagerPrev").addEventListener("click", () => {
+      currentPage -= 1;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    document.getElementById("pagerNext").addEventListener("click", () => {
+      currentPage += 1;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
 }
 
 document.getElementById("dateFrom").addEventListener("change", (e) => {
   dateFrom = e.target.value;
+  currentPage = 1;
   document.getElementById("clearDates").hidden = !(dateFrom || dateTo);
   render();
 });
 document.getElementById("dateTo").addEventListener("change", (e) => {
   dateTo = e.target.value;
+  currentPage = 1;
   document.getElementById("clearDates").hidden = !(dateFrom || dateTo);
   render();
 });
 document.getElementById("clearDates").addEventListener("click", () => {
   dateFrom = ""; dateTo = "";
+  currentPage = 1;
   document.getElementById("dateFrom").value = "";
   document.getElementById("dateTo").value = "";
   document.getElementById("clearDates").hidden = true;
