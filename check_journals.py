@@ -192,20 +192,28 @@ def pick_featured(matches_log):
     """Looks at every logged match from the last FEATURED_WINDOW_DAYS
     with a resolvable DOI, fetches its current Altmetric score, and
     returns the highest-scoring one as a dict -- or None if nothing in
-    the window has a score (e.g. all-Cell week, or Altmetric is down)."""
+    the window has a score (e.g. all-Cell week, or Altmetric is down).
+    Prints a breakdown so a "no pick" result is easy to diagnose."""
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=FEATURED_WINDOW_DAYS)
     cutoff_str = cutoff.isoformat()
 
+    in_window = 0
+    with_doi = 0
+    with_score = 0
     best = None
+
     for entry in matches_log:
         if entry.get("date", "") < cutoff_str:
             continue
+        in_window += 1
         doi = entry.get("doi") or extract_doi(entry.get("link", ""), entry.get("journal", ""))
         if not doi:
             continue
+        with_doi += 1
         score = get_altmetric_score(doi)
         if score is None:
             continue
+        with_score += 1
         if best is None or score > best["score"]:
             best = {
                 "journal": entry.get("journal"),
@@ -214,6 +222,10 @@ def pick_featured(matches_log):
                 "score": score,
                 "as_of": datetime.datetime.utcnow().isoformat() + "Z",
             }
+
+    print(f"Featured pick diagnostics: {in_window} matches in the last "
+          f"{FEATURED_WINDOW_DAYS} days, {with_doi} had a resolvable DOI, "
+          f"{with_score} had an Altmetric score.")
     return best
 
 
