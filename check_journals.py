@@ -15,7 +15,6 @@ Setup:
 """
 
 import os
-import re
 import json
 import feedparser
 import requests
@@ -101,30 +100,14 @@ def matches_keywords(entry):
     return any(kw.lower() in text for kw in KEYWORDS)
 
 
-def clean_summary(entry):
-    """Strip HTML and return just the first sentence of the abstract,
-    so the notification body is a short one-line topic summary rather
-    than a full (often HTML-tagged) abstract dump."""
-    raw = entry.get("summary", "")
-    text = re.sub(r"<[^>]+>", " ", raw)          # strip HTML tags
-    text = re.sub(r"\s+", " ", text).strip()      # collapse whitespace
-    if not text:
-        return "New article published."
-    # Split on sentence-ending punctuation followed by a space/capital.
-    match = re.match(r"(.{20,300}?[.!?])(\s|$)", text)
-    sentence = match.group(1) if match else text[:200]
-    return sentence
-
-
-def send_notification(entry):
-    title = entry.get("title", "New article").strip()
+def send_notification(journal, entry):
+    article_title = entry.get("title", "New article").strip()
     link = entry.get("link", "")
-    body = clean_summary(entry)
     requests.post(
         f"https://ntfy.sh/{NTFY_TOPIC}",
-        data=body.encode("utf-8"),
+        data=article_title.encode("utf-8"),
         headers={
-            "Title": title.encode("utf-8"),
+            "Title": journal.encode("utf-8"),
             "Click": link,
             "Priority": "default",
             "Tags": "dna",
@@ -160,7 +143,7 @@ def main():
             new_seen.add(article_id)
             if matches_keywords(entry):
                 print(f"MATCH [{journal}]: {entry.get('title')}")
-                send_notification(entry)
+                send_notification(journal, entry)
                 found_any = True
 
     save_seen(new_seen)
