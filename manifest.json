@@ -1,0 +1,9 @@
+{
+  "name": "RNA Watch",
+  "short_name": "RNA Watch",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#FAF9F5",
+  "theme_color": "#FAF9F5",
+  "icons": []
+}

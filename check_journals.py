@@ -16,6 +16,7 @@ Setup:
 
 import os
 import json
+import datetime
 import feedparser
 import requests
 
@@ -76,6 +77,15 @@ NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "your-unique-topic-name-here")
 # don't send duplicate notifications every run.
 SEEN_FILE = "seen_articles.json"
 
+# File used to log all matched articles for the companion web app to
+# read and display (with journal filtering). Kept separate from
+# SEEN_FILE, which only tracks IDs, not full article details.
+MATCHES_LOG_FILE = "matches_log.json"
+
+# Maximum number of matches kept in the log (oldest are dropped first)
+# so the file doesn't grow unbounded over months/years.
+MAX_LOG_ENTRIES = 500
+
 # If True, sends a low-priority "checked, nothing new" notification on
 # days with no matches -- useful as a heartbeat to confirm it's still
 # running. Set to False to go back to only hearing about real matches.
@@ -132,6 +142,19 @@ def save_seen(seen):
         json.dump(list(seen), f)
 
 
+def load_matches_log():
+    if os.path.exists(MATCHES_LOG_FILE):
+        with open(MATCHES_LOG_FILE, "r") as f:
+            return json.load(f)
+    return []
+
+
+def save_matches_log(log):
+    # Keep newest first, capped to MAX_LOG_ENTRIES.
+    with open(MATCHES_LOG_FILE, "w") as f:
+        json.dump(log[:MAX_LOG_ENTRIES], f, indent=2)
+
+
 def matches_keywords(entry):
     text = (entry.get("title", "") + " " + entry.get("summary", "")).lower()
     return any(kw.lower() in text for kw in KEYWORDS)
@@ -169,6 +192,7 @@ def send_heartbeat():
 def main():
     seen = load_seen()
     new_seen = set(seen)
+    matches_log = load_matches_log()
     found_any = False
 
     for journal, url in FEEDS.items():
@@ -181,9 +205,16 @@ def main():
             if matches_keywords(entry) and is_research_article(entry):
                 print(f"MATCH [{journal}]: {entry.get('title')}")
                 send_notification(journal, entry)
+                matches_log.insert(0, {
+                    "journal": journal,
+                    "title": entry.get("title", "").strip(),
+                    "link": entry.get("link", ""),
+                    "date": datetime.datetime.utcnow().isoformat() + "Z",
+                })
                 found_any = True
 
     save_seen(new_seen)
+    save_matches_log(matches_log)
     if not found_any:
         print("No new matching articles this run.")
         if NOTIFY_ON_NO_MATCHES:
