@@ -21,7 +21,7 @@ import requests
 
 # Keywords to watch for (case-insensitive). An article matches if ANY
 # of these appear in its title or summary.
-KEYWORDS = ["RNA"]
+KEYWORDS = ["RNA, mRNA"]
 
 # RSS feeds to check. Add/remove journals here.
 FEEDS = {
