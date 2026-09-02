@@ -177,14 +177,19 @@ def get_altmetric_score(doi):
     """Looks up a DOI's Altmetric attention score via the free public
     API. Returns a float score, or None if there's no data yet or the
     lookup fails for any reason (never raises -- a missing score just
-    means that article can't be considered for the featured pick)."""
+    means that article can't be considered for the featured pick).
+    Prints what happened for each lookup so failures are diagnosable."""
     try:
         resp = requests.get(f"https://api.altmetric.com/v1/doi/{doi}", timeout=10)
         if resp.status_code != 200:
+            print(f"  Altmetric lookup for {doi}: HTTP {resp.status_code}")
             return None
         data = resp.json()
-        return data.get("score")
-    except requests.RequestException:
+        score = data.get("score")
+        print(f"  Altmetric lookup for {doi}: score={score}")
+        return score
+    except requests.RequestException as e:
+        print(f"  Altmetric lookup for {doi}: request failed ({e})")
         return None
 
 
