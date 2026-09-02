@@ -81,7 +81,44 @@ SEEN_FILE = "seen_articles.json"
 # running. Set to False to go back to only hearing about real matches.
 NOTIFY_ON_NO_MATCHES = True
 
+# Article types to exclude -- reviews, editorials, news pieces, and
+# similar are filtered out so you only hear about original research.
+# Matched against the RSS feed's category/section tags (case-insensitive
+# substring match) and, as a backup, common title prefixes these
+# publishers use for non-research pieces.
+EXCLUDED_TYPES = [
+    "review", "editorial", "news", "comment", "perspective",
+    "correction", "erratum", "retraction", "correspondence",
+    "obituary", "book review", "research highlight", "news & views",
+    "in brief", "this week", "letter to the editor", "author correction",
+]
+
 # --- LOGIC --------------------------------------------------------------
+
+def is_research_article(entry):
+    """Returns False if the entry's category/section or title marks it
+    as a review, editorial, news piece, correction, etc."""
+    # Check feed-provided category/section tags first (most reliable).
+    categories = []
+    for tag in entry.get("tags", []):
+        term = tag.get("term", "")
+        if term:
+            categories.append(term.lower())
+    if entry.get("category"):
+        categories.append(str(entry.get("category")).lower())
+
+    for cat in categories:
+        if any(excluded in cat for excluded in EXCLUDED_TYPES):
+            return False
+
+    # Backup: some feeds put the type in the title itself, e.g.
+    # "Correction: ..." or "Editorial: ...".
+    title = entry.get("title", "").lower()
+    if any(title.startswith(excluded + ":") or title.startswith(excluded + " ")
+           for excluded in EXCLUDED_TYPES):
+        return False
+
+    return True
 
 def load_seen():
     if os.path.exists(SEEN_FILE):
@@ -141,7 +178,7 @@ def main():
             if not article_id or article_id in seen:
                 continue
             new_seen.add(article_id)
-            if matches_keywords(entry):
+            if matches_keywords(entry) and is_research_article(entry):
                 print(f"MATCH [{journal}]: {entry.get('title')}")
                 send_notification(journal, entry)
                 found_any = True
