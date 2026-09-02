@@ -23,9 +23,19 @@ EXCLUDED_TYPES = [
     "in brief", "this week", "letter to the editor", "author correction",
 ]
 
+# Journals excluded entirely, regardless of title -- every article
+# these publish is a review by definition, so no per-title check can
+# catch it (a review's title often doesn't contain the word "review").
+EXCLUDED_JOURNALS = [
+    "Nature Reviews Genetics",
+    "Nature Reviews Molecular Cell Biology",
+]
 
-def is_likely_non_research(title):
-    t = title.lower()
+
+def is_likely_non_research(entry):
+    if entry.get("journal") in EXCLUDED_JOURNALS:
+        return True
+    t = entry.get("title", "").lower()
     return any(excluded in t for excluded in EXCLUDED_TYPES)
 
 
@@ -36,7 +46,7 @@ def main():
     kept = []
     removed = []
     for entry in log:
-        if is_likely_non_research(entry.get("title", "")):
+        if is_likely_non_research(entry):
             removed.append(entry)
         else:
             kept.append(entry)

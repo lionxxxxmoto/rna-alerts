@@ -42,8 +42,9 @@ FEEDS = {
     "Nature Chemical Biology": "https://www.nature.com/nchembio.rss",
     "Nature Chemistry": "https://www.nature.com/nchem.rss",
     "Nature Communications": "https://www.nature.com/ncomms.rss",
-    "Nature Reviews Genetics": "https://www.nature.com/nrg.rss",
-    "Nature Reviews Molecular Cell Biology": "https://www.nature.com/nrm.rss",
+    # Note: Nature Reviews Genetics and Nature Reviews Molecular Cell
+    # Biology are deliberately excluded -- every article those journals
+    # publish is a review by definition, not primary research.
 
     # --- Science family ---
     "Science": "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=science",
