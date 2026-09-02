@@ -15,6 +15,7 @@ Setup:
 """
 
 import os
+import re
 import json
 import datetime
 import feedparser
@@ -92,6 +93,14 @@ MAX_LOG_ENTRIES = 500
 # running. Set to False to go back to only hearing about real matches.
 NOTIFY_ON_NO_MATCHES = True
 
+# File the web app reads to show a "hottest paper this week" section
+# at the top, based on Altmetric attention scores (see pick_featured()
+# below). Written fresh on every run; empty object if nothing qualifies.
+FEATURED_FILE = "featured.json"
+
+# How many days back counts as "this week" for the featured pick.
+FEATURED_WINDOW_DAYS = 7
+
 # Article types to exclude -- reviews, editorials, news pieces, and
 # similar are filtered out so you only hear about original research.
 # Matched against the RSS feed's category/section tags (case-insensitive
@@ -102,13 +111,14 @@ EXCLUDED_TYPES = [
     "correction", "erratum", "retraction", "correspondence",
     "obituary", "book review", "research highlight", "news & views",
     "in brief", "this week", "letter to the editor", "author correction",
+    "podcast",
 ]
 
 # --- LOGIC --------------------------------------------------------------
 
 def is_research_article(entry):
     """Returns False if the entry's category/section or title marks it
-    as a review, editorial, news piece, correction, etc."""
+    as a review, editorial, news piece, correction, podcast, etc."""
     # Check feed-provided category/section tags first (most reliable).
     categories = []
     for tag in entry.get("tags", []):
@@ -122,14 +132,90 @@ def is_research_article(entry):
         if any(excluded in cat for excluded in EXCLUDED_TYPES):
             return False
 
+    title = entry.get("title", "").lower()
+
+    # Podcasts get a plain substring check -- episode titles are often
+    # formatted like "Nature Podcast: 21 August 2026", so the word
+    # doesn't sit at the start of the title like "Review:" etc. do.
+    if "podcast" in title:
+        return False
+
     # Backup: some feeds put the type in the title itself, e.g.
     # "Correction: ..." or "Editorial: ...".
-    title = entry.get("title", "").lower()
     if any(title.startswith(excluded + ":") or title.startswith(excluded + " ")
            for excluded in EXCLUDED_TYPES):
         return False
 
     return True
+
+def extract_doi(link, journal):
+    """Best-effort DOI extraction from an article's URL, used to look
+    up its Altmetric attention score. Returns None if it can't be
+    determined -- that article is simply skipped from the featured
+    pick rather than causing an error.
+
+    - Nature-family URLs (nature.com/articles/<code>) map directly to
+      10.1038/<code> -- Springer Nature uses one DOI prefix site-wide.
+    - Science-family URLs embed the DOI directly after "/doi/".
+    - Cell-family (ScienceDirect) URLs use a "PII" identifier that
+      does NOT reliably map to a DOI without an extra lookup, so these
+      return None and are excluded from the featured comparison.
+    """
+    if "nature.com" in link:
+        m = re.search(r"/articles/([A-Za-z0-9\-\.]+)", link)
+        if m:
+            return f"10.1038/{m.group(1)}"
+    elif "science.org" in link:
+        m = re.search(r"/doi/(?:abs/|full/|pdf/)?(10\.\d{4,9}/\S+?)(?:[?#]|$)", link)
+        if m:
+            return m.group(1)
+    # Cell/ScienceDirect and anything else: no reliable extraction.
+    return None
+
+
+def get_altmetric_score(doi):
+    """Looks up a DOI's Altmetric attention score via the free public
+    API. Returns a float score, or None if there's no data yet or the
+    lookup fails for any reason (never raises -- a missing score just
+    means that article can't be considered for the featured pick)."""
+    try:
+        resp = requests.get(f"https://api.altmetric.com/v1/doi/{doi}", timeout=10)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        return data.get("score")
+    except requests.RequestException:
+        return None
+
+
+def pick_featured(matches_log):
+    """Looks at every logged match from the last FEATURED_WINDOW_DAYS
+    with a resolvable DOI, fetches its current Altmetric score, and
+    returns the highest-scoring one as a dict -- or None if nothing in
+    the window has a score (e.g. all-Cell week, or Altmetric is down)."""
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=FEATURED_WINDOW_DAYS)
+    cutoff_str = cutoff.isoformat()
+
+    best = None
+    for entry in matches_log:
+        if entry.get("date", "") < cutoff_str:
+            continue
+        doi = entry.get("doi") or extract_doi(entry.get("link", ""), entry.get("journal", ""))
+        if not doi:
+            continue
+        score = get_altmetric_score(doi)
+        if score is None:
+            continue
+        if best is None or score > best["score"]:
+            best = {
+                "journal": entry.get("journal"),
+                "title": entry.get("title"),
+                "link": entry.get("link"),
+                "score": score,
+                "as_of": datetime.datetime.utcnow().isoformat() + "Z",
+            }
+    return best
+
 
 def load_seen():
     if os.path.exists(SEEN_FILE):
@@ -206,16 +292,27 @@ def main():
             if matches_keywords(entry) and is_research_article(entry):
                 print(f"MATCH [{journal}]: {entry.get('title')}")
                 send_notification(journal, entry)
+                link = entry.get("link", "")
                 matches_log.insert(0, {
                     "journal": journal,
                     "title": entry.get("title", "").strip(),
-                    "link": entry.get("link", ""),
+                    "link": link,
                     "date": datetime.datetime.utcnow().isoformat() + "Z",
+                    "doi": extract_doi(link, journal),
                 })
                 found_any = True
 
     save_seen(new_seen)
     save_matches_log(matches_log)
+
+    featured = pick_featured(matches_log)
+    with open(FEATURED_FILE, "w") as f:
+        json.dump(featured or {}, f, indent=2)
+    if featured:
+        print(f"Featured: [{featured['journal']}] {featured['title']} (score {featured['score']})")
+    else:
+        print("No featured pick this run (no scored articles in the window).")
+
     if not found_any:
         print("No new matching articles this run.")
         if NOTIFY_ON_NO_MATCHES:

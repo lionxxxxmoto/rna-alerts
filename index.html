@@ -198,6 +198,35 @@
     line-height: 1.35;
   }
 
+  .featured {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--accent-tint);
+    border: 1px solid var(--accent);
+  }
+  .featured-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .featured-journal {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .featured-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    line-height: 1.35;
+    color: var(--ink);
+  }
+  .featured a { text-decoration: none; }
+
   .empty {
     text-align: center;
     padding: 80px 0;
@@ -217,9 +246,11 @@
 <div class="page">
 
 <header>
-  <h1>RNA Tracker</h1>
+  <h1>🧬 RNA Tracker</h1>
   <p class="subtitle" id="subtitle">Loading...</p>
 </header>
+
+<div id="featured"></div>
 
 <div class="tabs" id="tabs"></div>
 <div class="subfilters" id="subfilters"></div>
@@ -238,13 +269,14 @@
 
 <script>
 const DATA_URL = "matches_log.json";
+const FEATURED_URL = "featured.json";
 let allMatches = [];
 let activeFamily = "All";
 let activeJournal = "All";
 let dateFrom = "";
 let dateTo = "";
 let currentPage = 1;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 
 // Journal family membership -- must match the journal names used in
 // check_journals.py's FEEDS dict.
@@ -424,6 +456,21 @@ document.getElementById("clearDates").addEventListener("click", () => {
   render();
 });
 
+function renderFeatured(featured) {
+  const el = document.getElementById("featured");
+  if (!featured || !featured.title) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = `
+    <a class="featured" href="${featured.link}" target="_blank" rel="noopener">
+      <div class="featured-label">Featured Paper of the Week</div>
+      <div class="featured-journal">${escapeHtml(featured.journal)}</div>
+      <div class="featured-title">${escapeHtml(featured.title)}</div>
+    </a>
+  `;
+}
+
 fetch(DATA_URL, { cache: "no-store" })
   .then(r => r.json())
   .then(data => {
@@ -438,6 +485,11 @@ fetch(DATA_URL, { cache: "no-store" })
       '<div class="empty-body">Check that matches_log.json is published alongside this page.</div></div>';
     document.getElementById("subtitle").textContent = "Error loading data";
   });
+
+fetch(FEATURED_URL, { cache: "no-store" })
+  .then(r => r.json())
+  .then(featured => renderFeatured(featured))
+  .catch(() => {}); // featured section just stays hidden if this fails
 </script>
 
 </body>
