@@ -1,0 +1,28 @@
+name: Clean up match log
+
+on:
+  workflow_dispatch: {}  # manual trigger only -- run this once from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Remove non-research entries
+        run: python clean_log.py
+
+      - name: Commit cleaned log
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add matches_log.json
+          git diff --staged --quiet || git commit -m "Clean up non-research entries in match log"
+          git push
