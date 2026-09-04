@@ -15,6 +15,7 @@ Setup:
 """
 
 import os
+import re
 import json
 import datetime
 import feedparser
@@ -146,6 +147,15 @@ def is_research_article(entry):
     # "Correction: ..." or "Editorial: ...".
     if any(title.startswith(excluded + ":") or title.startswith(excluded + " ")
            for excluded in EXCLUDED_TYPES):
+        return False
+
+    # Cell Press "Preview" pieces -- short commentaries on another
+    # article in the same issue -- conventionally open their summary
+    # with "In this issue of [Journal], ...". Category tags for these
+    # aren't reliably present in the RSS feed, so this text pattern is
+    # the most consistent signal available.
+    summary_text = re.sub(r"<[^>]+>", " ", entry.get("summary", "")).strip().lower()
+    if summary_text.startswith("in this issue of"):
         return False
 
     return True
