@@ -21,6 +21,8 @@ EXCLUDED_TYPES = [
     "correction", "erratum", "retraction", "correspondence",
     "obituary", "book review", "research highlight", "news & views",
     "in brief", "this week", "letter to the editor", "author correction",
+    "podcast", "remembrance", "hagiography", "in science journals",
+    "in memoriam",
 ]
 
 # Journals excluded entirely, regardless of title -- every article
