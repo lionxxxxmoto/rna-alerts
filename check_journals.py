@@ -105,11 +105,21 @@ EXCLUDED_TYPES = [
     "podcast",
 ]
 
+# Phrases that can appear anywhere in a non-research title, not just as
+# a prefix -- e.g. an obituary titled "J. Michael Bishop: A remembrance"
+# or Science's "In Science Journals" roundup. Checked as a plain
+# substring anywhere in the title, unlike EXCLUDED_TYPES' prefix check.
+EXCLUDED_ANYWHERE = [
+    "podcast", "remembrance", "hagiography", "in science journals",
+    "in memoriam", "obituary",
+]
+
 # --- LOGIC --------------------------------------------------------------
 
 def is_research_article(entry):
     """Returns False if the entry's category/section or title marks it
-    as a review, editorial, news piece, correction, podcast, etc."""
+    as a review, editorial, news piece, correction, podcast, obituary,
+    roundup, etc."""
     # Check feed-provided category/section tags first (most reliable).
     categories = []
     for tag in entry.get("tags", []):
@@ -125,10 +135,10 @@ def is_research_article(entry):
 
     title = entry.get("title", "").lower()
 
-    # Podcasts get a plain substring check -- episode titles are often
-    # formatted like "Nature Podcast: 21 August 2026", so the word
-    # doesn't sit at the start of the title like "Review:" etc. do.
-    if "podcast" in title:
+    # These get a plain substring check anywhere in the title, since
+    # they don't reliably appear as a clean prefix like "Review:" does
+    # -- e.g. "J. Michael Bishop: A remembrance" or "In Science Journals".
+    if any(phrase in title for phrase in EXCLUDED_ANYWHERE):
         return False
 
     # Backup: some feeds put the type in the title itself, e.g.
