@@ -102,16 +102,17 @@ EXCLUDED_TYPES = [
     "correction", "erratum", "retraction", "correspondence",
     "obituary", "book review", "research highlight", "news & views",
     "in brief", "this week", "letter to the editor", "author correction",
-    "podcast",
+    "podcast", "spotlight", "preview",
 ]
 
 # Phrases that can appear anywhere in a non-research title, not just as
 # a prefix -- e.g. an obituary titled "J. Michael Bishop: A remembrance"
-# or Science's "In Science Journals" roundup. Checked as a plain
-# substring anywhere in the title, unlike EXCLUDED_TYPES' prefix check.
+# or Science's "In Science Journals" / "In Other Journals" roundups.
+# Checked as a plain substring anywhere in the title, unlike
+# EXCLUDED_TYPES' prefix check.
 EXCLUDED_ANYWHERE = [
     "podcast", "remembrance", "hagiography", "in science journals",
-    "in memoriam", "obituary",
+    "in other journals", "in memoriam", "obituary",
 ]
 
 # --- LOGIC --------------------------------------------------------------
