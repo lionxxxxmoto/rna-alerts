@@ -22,7 +22,7 @@ EXCLUDED_TYPES = [
     "obituary", "book review", "research highlight", "news & views",
     "in brief", "this week", "letter to the editor", "author correction",
     "podcast", "remembrance", "hagiography", "in science journals",
-    "in memoriam",
+    "in memoriam", "spotlight", "preview", "in other journals",
 ]
 
 # Journals excluded entirely, regardless of title -- every article
