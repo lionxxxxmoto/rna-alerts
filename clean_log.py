@@ -13,6 +13,7 @@ locally with: python clean_log.py
 """
 
 import json
+import re
 
 MATCHES_LOG_FILE = "matches_log.json"
 
@@ -37,6 +38,16 @@ EXCLUDED_JOURNALS = [
 def is_likely_non_research(entry):
     if entry.get("journal") in EXCLUDED_JOURNALS:
         return True
+
+    # Nature's main journal front-matter (News, Comment, Correspondence,
+    # Editorials, Obituaries, etc.) uses a "d41586-..." article code,
+    # vs. "s41586-..." for peer-reviewed research -- catchable here
+    # since we have the link stored, unlike category/summary data.
+    if entry.get("journal") == "Nature":
+        m = re.search(r"/articles/([a-zA-Z])\d", entry.get("link", ""))
+        if m and m.group(1).lower() == "d":
+            return True
+
     t = entry.get("title", "").lower()
     return any(excluded in t for excluded in EXCLUDED_TYPES)
 
