@@ -118,10 +118,21 @@ EXCLUDED_ANYWHERE = [
 
 # --- LOGIC --------------------------------------------------------------
 
-def is_research_article(entry):
+def is_research_article(entry, journal=None):
     """Returns False if the entry's category/section or title marks it
     as a review, editorial, news piece, correction, podcast, obituary,
     roundup, etc."""
+    # Nature's main journal (nature.com/articles/<code>) uses a DOI
+    # code convention: "s41586-..." is peer-reviewed original research,
+    # while "d41586-..." is front-matter/magazine content -- News,
+    # Comment, Correspondence, Editorials, Obituaries, Career pieces,
+    # etc. The RSS feed doesn't reliably tag these by category, but the
+    # code itself is a clean, mechanical signal.
+    if journal == "Nature":
+        m = re.search(r"/articles/([a-zA-Z])\d", entry.get("link", ""))
+        if m and m.group(1).lower() == "d":
+            return False
+
     # Check feed-provided category/section tags first (most reliable).
     categories = []
     for tag in entry.get("tags", []):
@@ -233,7 +244,7 @@ def main():
             if not article_id or article_id in seen:
                 continue
             new_seen.add(article_id)
-            if matches_keywords(entry) and is_research_article(entry):
+            if matches_keywords(entry) and is_research_article(entry, journal):
                 print(f"MATCH [{journal}]: {entry.get('title')}")
                 send_notification(journal, entry)
                 matches_log.insert(0, {
